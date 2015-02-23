@@ -43,24 +43,62 @@ def cmdexec(command):
     return {"return_code": proc.returncode, "stderr": stderr.rstrip(), "stdout": stdout.rstrip()}
 
 def get_recipe_data(recipe_name_or_id):
-	cmd_result = cmdexec("autopkg info %s" % (recipe_name_or_id))
-	if (cmd_result['return_code'] != 0):
-		return {"full_info":stdout}
-	else:
-		print "cannot read recipe %s!"
-		exit(1)
+    cmd_result = cmdexec("autopkg info %s" % (recipe_name_or_id))
+    if (cmd_result['return_code'] == 0):
+        recipe_data = {"full_info":cmd_result['stdout']}
+        for l in cmd_result['stdout'].splitlines():
+            if l.startswith("Identifier:"):
+                recipe_data['identifier'] = l[21:]
+            if l.startswith("Recipe file path:"):
+                recipe_data['path'] = l[21:]
+            if l.startswith("Parent recipe(s):"):
+                recipe_data['parent_path'] = l[21:]
+        logger(recipe_data, 2)
+        return recipe_data
+    else:
+        print "cannot read recipe %s! (return_code = %d)" % (recipe_name_or_id, cmd_result['return_code'])
+        exit(1)
 
 
 def print_version(args):
-	print recipeutil_version
+    print recipeutil_version
 
 def recipe_info(args):
     recipe_data = get_recipe_data(args.recipe_name_or_id)
+    if args.parent:
+        if 'parent_path' in recipe_data:
+            recipe_data = get_recipe_data(recipe_data['parent_path'])
+        else:
+            print "%s does not have a parent recipe!" % (args.recipe_name_or_id)
+            exit(1)
     print recipe_data["full_info"]
 
 def recipe_which(args):
-	print "recipe_info: "
-	print args
+    recipe_data = get_recipe_data(args.recipe_name_or_id)
+    
+    if args.parent:
+        if 'parent_path' in recipe_data:
+            print recipe_data['parent_path']
+            return
+        else:
+            print "%s does not have a parent recipe!" % (args.recipe_name_or_id)
+            exit(1)
+    
+    print recipe_data["path"]
+
+def recipe_id(args):
+    recipe_data = get_recipe_data(args.recipe_name_or_id)
+    
+    if args.parent:
+        if 'parent_path' in recipe_data:
+            recipe_data = get_recipe_data(recipe_data['parent_path'])
+        else:
+            print "%s does not have a parent recipe!" % (args.recipe_name_or_id)
+            exit(1)
+    
+    print recipe_data["identifier"]
+
+
 
 if __name__ == "__main__":
 
@@ -82,6 +120,8 @@ if __name__ == "__main__":
     subparsers.add_parser('version', description='prints the version').set_defaults(func=print_version)
     
     subparsers.add_parser('info', description='synonym for autopkg info', parents=[parent_parser]).set_defaults(func=recipe_info)
+    subparsers.add_parser('id', description='prints the identifier of the recipe', parents=[parent_parser]).set_defaults(func=recipe_id)
+    subparsers.add_parser('which', description='prints the path for the recipe', parents=[parent_parser]).set_defaults(func=recipe_which)
     
     parser.add_argument("-v", "--verbosity", action="count", default=0, help="amount of logging output")
     
