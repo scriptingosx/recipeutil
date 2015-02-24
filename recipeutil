@@ -44,7 +44,7 @@ def cmdexec(command):
     return {"return_code": proc.returncode, "stderr": stderr.rstrip(), "stdout": stdout.rstrip()}
 
 def get_recipe_data(recipe_name_or_id):
-    cmd_result = cmdexec("autopkg info %s" % (recipe_name_or_id))
+    cmd_result = cmdexec(["autopkg", "info", recipe_name_or_id])
     if (cmd_result['return_code'] == 0):
         recipe_data = {"full_info":cmd_result['stdout']}
         for l in cmd_result['stdout'].splitlines():
@@ -71,19 +71,24 @@ def recipe_which(recipe_data):
 def recipe_id(recipe_data):
     print recipe_data["identifier"]
 
+def recipe_open(recipe_data):
+    path = recipe_data['path']
+    cmdexec(['open', path])
 
 
 if __name__ == "__main__":
-    actions = { 'info':recipe_info, 'which': recipe_which, 'path': recipe_which, 'identifier':recipe_id , 'id':recipe_id}
+    actions = { 'info':recipe_info, 'which': recipe_which, 'path': recipe_which, 'identifier':recipe_id , 'id':recipe_id, 'open':recipe_open}
     # step 0: parse input from cli
 
     # for convenience link to argparse tutorial:
     # https://docs.python.org/2/howto/argparse.html#id1
     parser = argparse.ArgumentParser(description='A tool that helps manage and manipulate `autopkg` recipes.', 
                     epilog="""actions can be one of the following:
-    info            synonym for `autopkg info`
-    which or path   prints the path to the recipe_id
-    identifier      prints the identifier for the recipe""", formatter_class=RawTextHelpFormatter)
+    info                synonym for `autopkg info`
+    which or path       prints the path to the recipe_id
+    identifier or id    prints the identifier for the recipe
+    open                opens the recipe in the defaults application for recipe files
+    """, formatter_class=RawTextHelpFormatter)
 
     parser.add_argument('--version', help='prints the version', action='version', version=recipeutil_version)
 
