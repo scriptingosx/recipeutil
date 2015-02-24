@@ -20,6 +20,7 @@
 import os, subprocess
 
 import argparse
+from argparse import RawTextHelpFormatter
 
 recipeutil_version = '0.1'
 
@@ -53,82 +54,81 @@ def get_recipe_data(recipe_name_or_id):
                 recipe_data['path'] = l[21:]
             if l.startswith("Parent recipe(s):"):
                 recipe_data['parent_path'] = l[21:]
-        logger(recipe_data, 2)
+        logger(recipe_data, 3)
         return recipe_data
     else:
         print "cannot read recipe %s! (return_code = %d)" % (recipe_name_or_id, cmd_result['return_code'])
         exit(1)
 
 
-def print_version(args):
-    print recipeutil_version
 
-def recipe_info(args):
-    recipe_data = get_recipe_data(args.recipe_name_or_id)
-    if args.parent:
-        if 'parent_path' in recipe_data:
-            recipe_data = get_recipe_data(recipe_data['parent_path'])
-        else:
-            print "%s does not have a parent recipe!" % (args.recipe_name_or_id)
-            exit(1)
+def recipe_info(recipe_data):
     print recipe_data["full_info"]
 
-def recipe_which(args):
-    recipe_data = get_recipe_data(args.recipe_name_or_id)
-
-    if args.parent:
-        if 'parent_path' in recipe_data:
-            print recipe_data['parent_path']
-            return
-        else:
-            print "%s does not have a parent recipe!" % (args.recipe_name_or_id)
-            exit(1)
-
+def recipe_which(recipe_data):
     print recipe_data["path"]
 
-def recipe_id(args):
-    recipe_data = get_recipe_data(args.recipe_name_or_id)
-
-    if args.parent:
-        if 'parent_path' in recipe_data:
-            recipe_data = get_recipe_data(recipe_data['parent_path'])
-        else:
-            print "%s does not have a parent recipe!" % (args.recipe_name_or_id)
-            exit(1)
-
+def recipe_id(recipe_data):
     print recipe_data["identifier"]
 
 
 
 if __name__ == "__main__":
-
+    actions = { 'info':recipe_info, 'which': recipe_which, 'path': recipe_which, 'identifier':recipe_id , 'id':recipe_id}
     # step 0: parse input from cli
 
     # for convenience link to argparse tutorial:
     # https://docs.python.org/2/howto/argparse.html#id1
-
-
-    parser = argparse.ArgumentParser(description='A tool that helps manage and manipulate `autopkg` recipes.', epilog="""'verb' is one of the following:\n\n
-    info:       synonym for `autopkg info`\n
-    which:      prints the path to the recipe_id\n
-    id:         prints the identifier for the recipe\n""" )
-
+    parser = argparse.ArgumentParser(description='A tool that helps manage and manipulate `autopkg` recipes.', 
+                    epilog="""actions can be one of the following:
+    info            synonym for `autopkg info`
+    which or path   prints the path to the recipe_id
+    identifier      prints the identifier for the recipe""", formatter_class=RawTextHelpFormatter)
 
     parser.add_argument('--version', help='prints the version', action='version', version=recipeutil_version)
 
-    parser.add_argument('verb', choices=['info', 'id', 'which'])
+    parser.add_argument('action', choices=actions, help='action to be applied to the recipe')
 
-    parser.add_argument("-v", "--verbosity", action="count", default=0, help="amount of logging output")
+    parser.add_argument("-v", "--verbosity", action="count", default=0, help="controls amount of logging output (max -vvv)")
+    parser.add_argument("-n", "--names", action="store_true", help="prints the recipes' names before the info.")
 
     parent_option_group = parser.add_mutually_exclusive_group()
-    parent_option_group.add_argument('--parent', action='store_true', help="apply the action to parent of the recipe")
-    parent_option_group.add_argument('--all-parents', action='store_true', help="apply the action to recipe and all its parents")
+    parent_option_group.add_argument('--parent', '-p', action='store_true', help="apply the action to parent of the recipe")
+    parent_option_group.add_argument('--all-parents', '-a', action='store_true', help="apply the action to the recipe and all its parents")
 
     parser.add_argument('recipe_name_or_id', help="the recipe name or id")
 
     # finally, actually parse the arguments
     args = parser.parse_args()
-
+    logger(args, 3)
     #args.func(args)
+
+    # get the recipe data
+    recipe_data = get_recipe_data(args.recipe_name_or_id)
+    
+    # if --parent is set, replace recipe_data with its parent
+    if args.parent:
+        if 'parent_path' in recipe_data:
+            recipe_data = get_recipe_data(recipe_data['parent_path'])
+        else:
+            print "%s does not have a parent recipe!" % (args.recipe_name_or_id)
+            exit(1)
+    
+    recipe_list = [recipe_data]
+    
+    # if --all-parents is set work through the list
+    
+    if args.all_parents:
+        while 'parent_path' in recipe_data:
+            recipe_data = get_recipe_data(recipe_data['parent_path'])
+            recipe_list.append(recipe_data)
+    
+    # apply action to all items in recipe_data
+    l = len(recipe_list)
+    for r in recipe_list:
+        if args.names:
+            print
+            print os.path.basename(r['path'])
+        actions[args.action](r)
 
 
