@@ -75,9 +75,22 @@ def recipe_open(recipe_data):
     path = recipe_data['path']
     cmdexec(['open', path])
 
+def recipe_reveal(recipe_data):
+    path = recipe_data['path']
+    cmdexec(['open', '-R', path])
+
 
 if __name__ == "__main__":
-    actions = { 'info':recipe_info, 'which': recipe_which, 'path': recipe_which, 'identifier':recipe_id , 'id':recipe_id, 'open':recipe_open}
+    actions = { 
+        'info':recipe_info, 
+        'which': recipe_which, 
+        'path': recipe_which, 
+        'identifier':recipe_id , 
+        'id':recipe_id, 
+        'open':recipe_open,
+        'reveal':recipe_reveal,
+        'show': recipe_reveal,
+        }
     # step 0: parse input from cli
 
     # for convenience link to argparse tutorial:
@@ -88,6 +101,7 @@ if __name__ == "__main__":
     which or path       prints the path to the recipe_id
     identifier or id    prints the identifier for the recipe
     open                opens the recipe in the defaults application for recipe files
+    reveal or show      reveals the recipe file in the Finder
     """, formatter_class=RawTextHelpFormatter)
 
     parser.add_argument('--version', help='prints the version', action='version', version=recipeutil_version)
