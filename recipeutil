@@ -47,7 +47,7 @@ def cmdexec(command):
 def get_recipe_data(recipe_name_or_id):
     cmd_result = cmdexec(["autopkg", "info", recipe_name_or_id])
     if (cmd_result['return_code'] == 0):
-        recipe_data = {"full_info":cmd_result['stdout']}
+        recipe_data = {"full_info":cmd_result['stdout'], 'name':recipe_name_or_id}
         for l in cmd_result['stdout'].splitlines():
             if l.startswith("Identifier:"):
                 recipe_data['identifier'] = l[21:]
@@ -101,6 +101,8 @@ def recipe_status(recipe_data):
     result = cmdexec(cmds)
     print result['stdout']
 
+
+
 if __name__ == "__main__":
     actions = { 
         'info':recipe_info, 
@@ -112,7 +114,7 @@ if __name__ == "__main__":
         'reveal':recipe_reveal,
         'show': recipe_reveal,
         'edit': recipe_edit,
-        'status': recipe_status
+        'status': recipe_status,
         }
     # step 0: parse input from cli
 
@@ -177,7 +179,7 @@ if __name__ == "__main__":
     for r in recipe_list:
         if args.names:
             print
-            print os.path.basename(r['path'])
+            print r['name']
         actions[args.action](r)
 
 
