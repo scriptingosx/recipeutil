@@ -75,7 +75,7 @@ def recipe_info(args):
 
 def recipe_which(args):
     recipe_data = get_recipe_data(args.recipe_name_or_id)
-    
+
     if args.parent:
         if 'parent_path' in recipe_data:
             print recipe_data['parent_path']
@@ -83,19 +83,19 @@ def recipe_which(args):
         else:
             print "%s does not have a parent recipe!" % (args.recipe_name_or_id)
             exit(1)
-    
+
     print recipe_data["path"]
 
 def recipe_id(args):
     recipe_data = get_recipe_data(args.recipe_name_or_id)
-    
+
     if args.parent:
         if 'parent_path' in recipe_data:
             recipe_data = get_recipe_data(recipe_data['parent_path'])
         else:
             print "%s does not have a parent recipe!" % (args.recipe_name_or_id)
             exit(1)
-    
+
     print recipe_data["identifier"]
 
 
@@ -107,26 +107,28 @@ if __name__ == "__main__":
     # for convenience link to argparse tutorial:
     # https://docs.python.org/2/howto/argparse.html#id1
 
-    parent_parser = argparse.ArgumentParser(add_help=False)
-    parent_option_group = parent_parser.add_mutually_exclusive_group()
+
+    parser = argparse.ArgumentParser(description='A tool that helps manage and manipulate `autopkg` recipes.', epilog="""'verb' is one of the following:\n\n
+    info:       synonym for `autopkg info`\n
+    which:      prints the path to the recipe_id\n
+    id:         prints the identifier for the recipe\n""" )
+
+
+    parser.add_argument('--version', help='prints the version', action='version', version=recipeutil_version)
+
+    parser.add_argument('verb', choices=['info', 'id', 'which'])
+
+    parser.add_argument("-v", "--verbosity", action="count", default=0, help="amount of logging output")
+
+    parent_option_group = parser.add_mutually_exclusive_group()
     parent_option_group.add_argument('--parent', action='store_true', help="apply the action to parent of the recipe")
     parent_option_group.add_argument('--all-parents', action='store_true', help="apply the action to recipe and all its parents")
-    parent_parser.add_argument('recipe_name_or_id', help="the recipe name or id")
-    
-    parser = argparse.ArgumentParser(description='A tool that helps manage and manipulate `autopkg` recipes.')
-    
-    subparsers = parser.add_subparsers(help='verbs to apply to a recipe')
-    
-    subparsers.add_parser('version', description='prints the version').set_defaults(func=print_version)
-    
-    subparsers.add_parser('info', description='synonym for autopkg info', parents=[parent_parser]).set_defaults(func=recipe_info)
-    subparsers.add_parser('id', description='prints the identifier of the recipe', parents=[parent_parser]).set_defaults(func=recipe_id)
-    subparsers.add_parser('which', description='prints the path for the recipe', parents=[parent_parser]).set_defaults(func=recipe_which)
-    
-    parser.add_argument("-v", "--verbosity", action="count", default=0, help="amount of logging output")
-    
+
+    parser.add_argument('recipe_name_or_id', help="the recipe name or id")
+
+    # finally, actually parse the arguments
     args = parser.parse_args()
 
-    args.func(args)
+    #args.func(args)
 
-    
+
