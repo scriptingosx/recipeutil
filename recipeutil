@@ -23,6 +23,7 @@ import argparse
 from argparse import RawTextHelpFormatter
 
 recipeutil_version = '0.1'
+extra_args=[]
 
 def logger(log, v=0):
     if args.verbosity >= v:
@@ -81,10 +82,24 @@ def recipe_reveal(recipe_data):
 
 def recipe_edit(recipe_data):
     path = recipe_data['path']
-    editor = os.environ['EDITOR'].split()
+    if 'RECIPE_EDITOR' in os.environ:
+        editor = os.environ['RECIPE_EDITOR'].split()
+    else:
+        editor = os.environ['EDITOR'].split()
     editor.append(path)
-    logger("Editor: %s" % (editor), 3)
+    if len(extra_args) > 0:
+        editor.extend(extra_args)
+    logger("Editor: %s" % (editor), 2)
     cmdexec(editor)
+
+def recipe_status(recipe_data):
+    dir_path = os.path.dirname(recipe_data['path'])
+    cmds = ['git', '-C', dir_path, 'status']
+    if len(extra_args) > 0:
+        cmds.extend(extra_args)
+    logger(cmds, 2)
+    result = cmdexec(cmds)
+    print result['stdout']
 
 if __name__ == "__main__":
     actions = { 
@@ -97,6 +112,7 @@ if __name__ == "__main__":
         'reveal':recipe_reveal,
         'show': recipe_reveal,
         'edit': recipe_edit,
+        'status': recipe_status
         }
     # step 0: parse input from cli
 
@@ -104,17 +120,23 @@ if __name__ == "__main__":
     # https://docs.python.org/2/howto/argparse.html#id1
     parser = argparse.ArgumentParser(description='A tool that helps manage and manipulate `autopkg` recipes.', 
                     epilog="""actions can be one of the following:
-    info                synonym for `autopkg info`
-    which or path       prints the path to the recipe_id
-    identifier or id    prints the identifier for the recipe
-    open                opens the recipe in the defaults application for recipe files
-    reveal or show      reveals the recipe file in the Finder
-    edit                opens the recipe in the text editor set in $EDITOR
+    info              synonym for `autopkg info`
+    which or path     prints the path to the recipe_id
+    identifier or id  prints the identifier for the recipe
+    open              opens recipe with default application for recipe files
+    reveal or show    reveals the recipe file in the Finder
+    edit              opens the recipe in the text editor set in $EDITOR
+    status            runs 'git status' on the directory enclosing the recipe
+    
+    for 'status' and 'edit' additional options will be passed into the command
+    e.g.: recipeutil status Firefox.download -s
+    
+    
     """, formatter_class=RawTextHelpFormatter)
 
     parser.add_argument('--version', help='prints the version', action='version', version=recipeutil_version)
 
-    parser.add_argument('action', choices=actions, help='action to be applied to the recipe')
+    parser.add_argument('action', choices=sorted(actions.keys()), help='action to be applied to the recipe')
 
     parser.add_argument("-v", "--verbosity", action="count", default=0, help="controls amount of logging output (max -vvv)")
     parser.add_argument("-n", "--names", action="store_true", help="prints the recipes' names before the info.")
@@ -126,7 +148,7 @@ if __name__ == "__main__":
     parser.add_argument('recipe_name_or_id', help="the recipe name or id")
 
     # finally, actually parse the arguments
-    args = parser.parse_args()
+    (args, extra_args) = parser.parse_known_args()
     logger(args, 3)
     #args.func(args)
 
