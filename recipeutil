@@ -79,6 +79,12 @@ def recipe_reveal(recipe_data):
     path = recipe_data['path']
     cmdexec(['open', '-R', path])
 
+def recipe_edit(recipe_data):
+    path = recipe_data['path']
+    editor = os.environ['EDITOR'].split()
+    editor.append(path)
+    logger("Editor: %s" % (editor), 3)
+    cmdexec(editor)
 
 if __name__ == "__main__":
     actions = { 
@@ -90,6 +96,7 @@ if __name__ == "__main__":
         'open':recipe_open,
         'reveal':recipe_reveal,
         'show': recipe_reveal,
+        'edit': recipe_edit,
         }
     # step 0: parse input from cli
 
@@ -102,6 +109,7 @@ if __name__ == "__main__":
     identifier or id    prints the identifier for the recipe
     open                opens the recipe in the defaults application for recipe files
     reveal or show      reveals the recipe file in the Finder
+    edit                opens the recipe in the text editor set in $EDITOR
     """, formatter_class=RawTextHelpFormatter)
 
     parser.add_argument('--version', help='prints the version', action='version', version=recipeutil_version)
