@@ -23,7 +23,7 @@ import argparse
 from argparse import RawTextHelpFormatter
 
 recipeutil_version = '0.1'
-extra_args=[]
+args=[]
 
 def logger(log, v=0):
     if args.verbosity >= v:
@@ -87,16 +87,16 @@ def recipe_edit(recipe_data):
     else:
         editor = os.environ['EDITOR'].split()
     editor.append(path)
-    if len(extra_args) > 0:
-        editor.extend(extra_args)
+    if len(args.extra_args) > 0:
+        editor.extend(args.extra_args)
     logger("Editor: %s" % (editor), 2)
     cmdexec(editor)
 
 def recipe_status(recipe_data):
     dir_path = os.path.dirname(recipe_data['path'])
     cmds = ['git', '-C', dir_path, 'status']
-    if len(extra_args) > 0:
-        cmds.extend(extra_args)
+    if len(args.extra_args) > 0:
+        cmds.extend(args.extra_args)
     logger(cmds, 2)
     result = cmdexec(cmds)
     print result['stdout']
@@ -120,18 +120,17 @@ if __name__ == "__main__":
     # https://docs.python.org/2/howto/argparse.html#id1
     parser = argparse.ArgumentParser(description='A tool that helps manage and manipulate `autopkg` recipes.', 
                     epilog="""actions can be one of the following:
-    info              synonym for `autopkg info`
-    which or path     prints the path to the recipe_id
-    identifier or id  prints the identifier for the recipe
-    open              opens recipe with default application for recipe files
-    reveal or show    reveals the recipe file in the Finder
-    edit              opens the recipe in the text editor set in $EDITOR
-    status            runs 'git status' on the directory enclosing the recipe
+    info                synonym for `autopkg info`
+    which or path       prints the path to the recipe_id
+    identifier or id    prints the identifier for the recipe
+    open                opens recipe with default application for recipe files
+    reveal or show      reveals the recipe file in the Finder
+    edit                opens the recipe in the text editor set in $EDITOR
+                        if $RECIPE_EDITOR is set it will be used instead
+    status              runs 'git status' on the directory enclosing the recipe
     
     for 'status' and 'edit' additional options will be passed into the command
-    e.g.: recipeutil status Firefox.download -s
-    
-    
+    e.g.: recipeutil status Firefox.download --short
     """, formatter_class=RawTextHelpFormatter)
 
     parser.add_argument('--version', help='prints the version', action='version', version=recipeutil_version)
@@ -146,9 +145,10 @@ if __name__ == "__main__":
     parent_option_group.add_argument('--all-parents', '-a', action='store_true', help="apply the action to the recipe and all its parents")
 
     parser.add_argument('recipe_name_or_id', help="the recipe name or id")
+    parser.add_argument('extra_args', nargs=argparse.REMAINDER, help="extra arguments will be passed through to 'edit' and 'status' commands")
 
     # finally, actually parse the arguments
-    (args, extra_args) = parser.parse_known_args()
+    args = parser.parse_args()
     logger(args, 3)
     #args.func(args)
 
