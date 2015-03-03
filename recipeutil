@@ -17,7 +17,7 @@
 
 """A tool that helps manage and manipulate `autopkg` recipes."""
 
-import os, subprocess
+import os, subprocess, shutil
 
 import argparse
 from argparse import RawTextHelpFormatter
@@ -100,7 +100,34 @@ def recipe_status(recipe_data):
     logger(cmds, 2)
     result = cmdexec(cmds)
     print result['stdout']
+    
 
+def get_cache_folder(recipe_data):
+    cache_root = cmdexec(["defaults", "read", "com.github.autopkg", "CACHE_DIR"])["stdout"]
+    #logger(cache_root, 3)
+    if not os.path.isdir(cache_root):
+        print "cannot find CACHE_DIR: %s" % (cache_root)
+        exit(1)
+    
+    cache_dir = os.path.join(cache_root, recipe_data["identifier"])
+    if not os.path.isdir(cache_dir):
+        print "cannot find cache folder: %s" % (cache_dir)
+        exit(1)
+        
+    return cache_dir
+    
+
+def open_cache(recipe_data):
+    cache_dir = get_cache_folder(recipe_data)
+    
+    cmdexec(['open', cache_dir])
+
+def clear_cache(recipe_data):
+    cache_dir = get_cache_folder(recipe_data)
+    
+    shutil.rmtree(cache_dir)
+    
+    print "Deleted cache folder: %s" % (cache_dir)
 
 
 if __name__ == "__main__":
@@ -115,6 +142,8 @@ if __name__ == "__main__":
         'show': recipe_reveal,
         'edit': recipe_edit,
         'status': recipe_status,
+        'cache': open_cache,
+        'clearcache': clear_cache,
         }
     # step 0: parse input from cli
 
@@ -130,6 +159,8 @@ if __name__ == "__main__":
     edit                opens the recipe in the text editor set in $EDITOR
                         if $RECIPE_EDITOR is set it will be used instead
     status              runs 'git status' on the directory enclosing the recipe
+    cache               opens the cache folder for this recipe in the finder
+    clearcache             deletes the cache folder for this recipe
     
     for 'status' and 'edit' additional options will be passed into the command
     e.g.: recipeutil status Firefox.download --short

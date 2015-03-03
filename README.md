@@ -28,6 +28,12 @@ reveals the recipe in finder
 ### `status`
 shows `git status` of the file
 
+### `cache`
+opens the cache folder for this recipe in the Finder
+
+### `clearcache`
+deletes the cache folder for this recipe
+
 
 ## options
 
