@@ -34,6 +34,21 @@ opens the cache folder for this recipe in the Finder
 ### `clearcache`
 deletes the cache folder for this recipe
 
+### `duplicate`
+will prompt for a new recipe identifier fill that in a new recipe
+
+### `new`
+will search the autopkg search path for recipes named RecipeTemplate.* and create a new recipe from that
+
+### `newchild`
+will create a new recipe pointed to the given recipe as parent. will use a RecipeTemplate if it can be found in the autopkg recipe search path
+
+### `merge`
+will create a new recipe by merging the given recipe with its parent
+
+### `split`
+will print the processors and prompt for a step to split the given recipe after. The original file will be retained with '_presplit' added to the filename.
+
 
 ## options
 
@@ -54,4 +69,4 @@ recipeutil status Firefox.download --short
 
 recipeutil edit --all-parents Fetch.munki --new-window
 ```
- 
+
