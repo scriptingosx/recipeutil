@@ -62,6 +62,29 @@ def get_recipe_data(recipe_name_or_id):
         exit(1)
 
 
+#stolen from munkiimport
+def raw_input_with_default(prompt='', default=''):
+    '''Get input from user with a prompt and a suggested default value'''
+
+    if default:
+        prompt = '%s [%s]: ' % (prompt, default)
+        return raw_input(prompt).decode('UTF-8') or default.decode('UTF-8')
+    else:
+        # no default value, just call raw_input
+        return raw_input(prompt + ": ").decode('UTF-8')
+
+
+def get_pref(pref_key, default=None):
+    pref_domain = "com.github.autopkg"
+    r = cmdexec(["defaults", "read", pref_domain, pref_key])
+    if r["return_code"] == 0:
+        return r["stdout"]
+    
+    if pref_key in os.environ:
+        return os.environ[pref_key]
+    
+    return default
+
 
 def recipe_info(recipe_data):
     print recipe_data["full_info"]
@@ -82,10 +105,11 @@ def recipe_reveal(recipe_data):
 
 def recipe_edit(recipe_data):
     path = recipe_data['path']
-    if 'RECIPE_EDITOR' in os.environ:
-        editor = os.environ['RECIPE_EDITOR'].split()
-    else:
-        editor = os.environ['EDITOR'].split()
+    editor_string = get_pref('RECIPE_EDITOR')
+    if editor_string is None:
+        editor_string = get_pref('EDITOR')
+    
+    editor = editor_string.split()
     editor.append(path)
     if len(args.extra_args) > 0:
         editor.extend(args.extra_args)
@@ -103,7 +127,7 @@ def recipe_status(recipe_data):
     
 
 def get_cache_folder(recipe_data):
-    cache_root = cmdexec(["defaults", "read", "com.github.autopkg", "CACHE_DIR"])["stdout"]
+    cache_root = get_pref("CACHE_DIR")
     #logger(cache_root, 3)
     if not os.path.isdir(cache_root):
         print "cannot find CACHE_DIR: %s" % (cache_root)
@@ -128,6 +152,21 @@ def clear_cache(recipe_data):
     shutil.rmtree(cache_dir)
     
     print "Deleted cache folder: %s" % (cache_dir)
+    
+
+def clone_recipe(recipe_data):
+    return
+
+def child_recipe(recipe_data):
+    return
+
+def test_pref (recipe_data):
+    if len(args.extra_args) > 0:
+        keys=args.extra_args
+    
+    for x in keys:
+        print "%s: %s" %(x, get_pref(x))
+
 
 
 if __name__ == "__main__":
@@ -144,6 +183,10 @@ if __name__ == "__main__":
         'status': recipe_status,
         'cache': open_cache,
         'clearcache': clear_cache,
+        'duplicate': clone_recipe,
+        'procreate': child_recipe,
+        'newchild': child_recipe,
+        'pref': test_pref,
         }
     # step 0: parse input from cli
 
@@ -160,7 +203,9 @@ if __name__ == "__main__":
                         if $RECIPE_EDITOR is set it will be used instead
     status              runs 'git status' on the directory enclosing the recipe
     cache               opens the cache folder for this recipe in the finder
-    clearcache             deletes the cache folder for this recipe
+    clearcache          deletes the cache folder for this recipe
+    duplicate           prompts for a new identifier and creates a copy of the recipe in the CWD
+    newchild            prompts for a new identifier and creates a new stub recipe with the given recipe as a parent
     
     for 'status' and 'edit' additional options will be passed into the command
     e.g.: recipeutil status Firefox.download --short
