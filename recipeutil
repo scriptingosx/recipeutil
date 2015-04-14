@@ -17,10 +17,13 @@
 
 """A tool that helps manage and manipulate `autopkg` recipes."""
 
-import os, subprocess, shutil
+import os
+import subprocess
+import shutil
+import readline
+import plistlib
 
 import argparse
-from argparse import RawTextHelpFormatter
 
 recipeutil_version = '0.1'
 args=[]
@@ -61,7 +64,6 @@ def get_recipe_data(recipe_name_or_id):
         print "cannot read recipe %s! (return_code = %d)" % (recipe_name_or_id, cmd_result['return_code'])
         exit(1)
 
-
 #stolen from munkiimport
 def raw_input_with_default(prompt='', default=''):
     '''Get input from user with a prompt and a suggested default value'''
@@ -84,7 +86,41 @@ def get_pref(pref_key, default=None):
         return os.environ[pref_key]
     
     return default
+    
 
+def get_id_prefix():
+    id_prefix = get_pref('RECIPE_ID_PREFIX')
+    if id_prefix != None:
+        return id_prefix
+    
+    username = None
+    r = cmdexec("git config --get user.name")
+    if r['return_code'] == 0:
+        username = r['stdout']
+    
+    if username == None:
+        username = os.getlogin()
+        
+    return "com.github.%s" % (username)
+
+def load_recipe(recipe_path):
+    if os.path.exists(recipe_path):
+        return plistlib.readPlist(recipe_path)
+    else:
+        print "could not find file: %s" % (recipe_path)
+
+def save_recipe(recipe_dict, recipe_name):
+    # save plist in cwd
+    filename = "%s.recipe" % (recipe_name)
+    while os.path.exists(filename):
+        print "Recipe file '%s' exists in CWD!"
+        recipe_name = "%s_duplicate" % (recipe_name)
+        recipe_name = raw_input_with_default("New Recipe Name:", recipe_name)
+        filename = "%s.recipe" % (recipe_name)
+    
+    plistlib.writePlist(recipe_plist, filename)
+
+### ACTIONS
 
 def recipe_info(recipe_data):
     print recipe_data["full_info"]
@@ -155,7 +191,21 @@ def clear_cache(recipe_data):
     
 
 def clone_recipe(recipe_data):
-    return
+    # figure out new identifier:
+    # get name and action extension
+    old_id = recipe_data['identifier']
+    id_frags = old_id.rsplit('.', 2)
+    # strip off old id_prefix, add new id_prefix
+    new_id = '.'.join([get_id_prefix(), id_frags[1], id_frags[2]])
+    print "Old Identifier: " + old_id
+    new_id = raw_input_with_default("New Identifier", new_id)
+    # TODO: check if this id is already used
+    # load plist of original recipe
+    recipe_plist = load_recipe(recipe_data['path'])
+    # replace id
+    recipe_plist['Identifier'] = new_id
+    # save plist in cwd
+    save_recipe(recipe_plist, recipe_data['name'])
 
 def child_recipe(recipe_data):
     return
@@ -209,7 +259,7 @@ if __name__ == "__main__":
     
     for 'status' and 'edit' additional options will be passed into the command
     e.g.: recipeutil status Firefox.download --short
-    """, formatter_class=RawTextHelpFormatter)
+    """, formatter_class=argparse.RawTextHelpFormatter)
 
     parser.add_argument('--version', help='prints the version', action='version', version=recipeutil_version)
 
