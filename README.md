@@ -61,3 +61,27 @@ recipeutil status Firefox.download --short
 recipeutil edit --all-parents Fetch.munki --new-window
 ```
 
+### about generated identifiers
+
+`duplicate` and `newchild` will attempt to generate a recipe identifier for you. To figure ou the right prefix, they will try the following:
+
+First they will look for a key `RECIPE_ID_PREFIX` in the AutoPkg preference domain `com.github.autopkg`. You can set this with 
+
+```
+defaults write com.github.autopkg write RECIPE_ID_PREFIX com.scriptingosx
+```
+
+If that is unset, it will look for `RECIPE_ID_PREFIX` as an environment variable.
+
+If the environment variable is also unset, it will attempt to get the `user.name` config setting from `git`. I.e. run this command:
+
+```
+git config --get user.name
+```
+
+and prefix `com.github.` to that.
+
+If the git user name is unset it will fall back to the current user name and prefix `com.github.`
+
+In most cases it should work just fine. If you do not like the default behavior, set the default in `com.github.autopkg`.
+
