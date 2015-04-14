@@ -75,7 +75,6 @@ def raw_input_with_default(prompt='', default=''):
         # no default value, just call raw_input
         return raw_input(prompt + ": ").decode('UTF-8')
 
-
 def get_pref(pref_key, default=None):
     pref_domain = "com.github.autopkg"
     r = cmdexec(["defaults", "read", pref_domain, pref_key])
@@ -113,12 +112,15 @@ def save_recipe(recipe_dict, recipe_name):
     # save plist in cwd
     filename = "%s.recipe" % (recipe_name)
     while os.path.exists(filename):
-        print "Recipe file '%s' exists in CWD!"
+        print "Recipe file '%s' exists!" % (filename)
         recipe_name = "%s_duplicate" % (recipe_name)
         recipe_name = raw_input_with_default("New Recipe Name:", recipe_name)
         filename = "%s.recipe" % (recipe_name)
     
-    plistlib.writePlist(recipe_plist, filename)
+    plistlib.writePlist(recipe_dict, filename)
+
+def get_autopkg_version():
+    return cmdexec("autopkg version")['stdout']
 
 ### ACTIONS
 
@@ -208,7 +210,36 @@ def clone_recipe(recipe_data):
     save_recipe(recipe_plist, recipe_data['name'])
 
 def child_recipe(recipe_data):
-    return
+    # prompt for new name
+    parent_name = recipe_data['name']
+    parent_name_frags = parent_name.split('.')
+    print "Parent Recipe Name: %s" % (parent_name)
+    
+    new_action = raw_input_with_default("Child Recipe Action (download, pkg, install...)")
+    if new_action != parent_name_frags[1]:
+        new_name = parent_name_frags[0]
+    else:
+        new_name = ''
+    new_name = raw_input_with_default("Child Recipe Name", new_name)
+    # prompt for new id
+    parent_id = recipe_data['identifier']
+    id_frags = parent_id.rsplit('.', 2)
+    # strip off old id_prefix, add new id_prefix
+    new_id = '.'.join([get_id_prefix(), new_action, new_name])
+    print "Parent Identifier: " + parent_id
+    new_id = raw_input_with_default("Child Identifier", new_id)
+    # TODO: check if this id is already used
+    recipe_root = {
+        'Identifier': new_id,
+        'ParentRecipe':parent_id,
+        'Description': "DESCRIPTION HERE!",
+        'Process': [],
+        'Input': [],
+        'MinimumVersion': get_autopkg_version()
+        }
+    new_filename = '.'.join([new_name, new_action])
+    save_recipe(recipe_root, new_filename)
+    
 
 def test_pref (recipe_data):
     if len(args.extra_args) > 0:
