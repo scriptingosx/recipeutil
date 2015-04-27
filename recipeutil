@@ -20,21 +20,21 @@
 import os
 import subprocess
 import shutil
-import readline
 import plistlib
 
 import argparse
 
-recipeutil_version = '0.1'
-args=[]
+recipeutil_version = '0.2'
+args = []
+
 
 def logger(log, v=0):
     if args.verbosity >= v:
-        print log;
+        print log
+
 
 def cmdexec(command):
     """Execute a command."""
-
     # if 'command' is a string, split the string into components
     if isinstance(command, str):
         command = command.split()
@@ -47,10 +47,11 @@ def cmdexec(command):
     # strip trailing whitespace, which would mess with string comparisons
     return {"return_code": proc.returncode, "stderr": stderr.rstrip(), "stdout": stdout.rstrip()}
 
+
 def get_recipe_data(recipe_name_or_id):
     cmd_result = cmdexec(["autopkg", "info", recipe_name_or_id])
     if (cmd_result['return_code'] == 0):
-        recipe_data = {"full_info":cmd_result['stdout'], 'name':recipe_name_or_id}
+        recipe_data = {"full_info": cmd_result['stdout'], 'name': recipe_name_or_id}
         for l in cmd_result['stdout'].splitlines():
             if l.startswith("Identifier:"):
                 recipe_data['identifier'] = l[21:]
@@ -64,7 +65,8 @@ def get_recipe_data(recipe_name_or_id):
         print "cannot read recipe %s! (return_code = %d)" % (recipe_name_or_id, cmd_result['return_code'])
         exit(1)
 
-#stolen from munkiimport
+
+# stolen from munkiimport
 def raw_input_with_default(prompt='', default=''):
     '''Get input from user with a prompt and a suggested default value'''
 
@@ -75,38 +77,41 @@ def raw_input_with_default(prompt='', default=''):
         # no default value, just call raw_input
         return raw_input(prompt + ": ").decode('UTF-8')
 
+
 def get_pref(pref_key, default=None):
     pref_domain = "com.github.autopkg"
     r = cmdexec(["defaults", "read", pref_domain, pref_key])
     if r["return_code"] == 0:
         return r["stdout"]
-    
+
     if pref_key in os.environ:
         return os.environ[pref_key]
-    
+
     return default
-    
+
 
 def get_id_prefix():
     id_prefix = get_pref('RECIPE_ID_PREFIX')
-    if id_prefix != None:
+    if id_prefix is not None:
         return id_prefix
-    
+
     username = None
     r = cmdexec("git config --get user.name")
     if r['return_code'] == 0:
         username = r['stdout']
-    
-    if username == None:
+
+    if username is None:
         username = os.getlogin()
-        
+
     return "com.github.%s" % (username)
+
 
 def load_recipe(recipe_path):
     if os.path.exists(recipe_path):
         return plistlib.readPlist(recipe_path)
     else:
         print "could not find file: %s" % (recipe_path)
+
 
 def save_recipe(recipe_dict, recipe_name):
     # save plist in cwd
@@ -116,43 +121,52 @@ def save_recipe(recipe_dict, recipe_name):
         recipe_name = "%s_duplicate" % (recipe_name)
         recipe_name = raw_input_with_default("New Recipe Name:", recipe_name)
         filename = "%s.recipe" % (recipe_name)
-    
+
     plistlib.writePlist(recipe_dict, filename)
+
 
 def get_autopkg_version():
     return cmdexec("autopkg version")['stdout']
 
-### ACTIONS
+
+# ACTIONS
+
 
 def recipe_info(recipe_data):
     print recipe_data["full_info"]
 
+
 def recipe_which(recipe_data):
     print recipe_data["path"]
 
+
 def recipe_id(recipe_data):
     print recipe_data["identifier"]
+
 
 def recipe_open(recipe_data):
     path = recipe_data['path']
     cmdexec(['open', path])
 
+
 def recipe_reveal(recipe_data):
     path = recipe_data['path']
     cmdexec(['open', '-R', path])
+
 
 def recipe_edit(recipe_data):
     path = recipe_data['path']
     editor_string = get_pref('RECIPE_EDITOR')
     if editor_string is None:
         editor_string = get_pref('EDITOR')
-    
+
     editor = editor_string.split()
     editor.append(path)
     if len(args.extra_args) > 0:
         editor.extend(args.extra_args)
     logger("Editor: %s" % (editor), 2)
     cmdexec(editor)
+
 
 def recipe_status(recipe_data):
     dir_path = os.path.dirname(recipe_data['path'])
@@ -162,35 +176,36 @@ def recipe_status(recipe_data):
     logger(cmds, 2)
     result = cmdexec(cmds)
     print result['stdout']
-    
+
 
 def get_cache_folder(recipe_data):
     cache_root = get_pref("CACHE_DIR")
-    #logger(cache_root, 3)
+    # logger(cache_root, 3)
     if not os.path.isdir(cache_root):
         print "cannot find CACHE_DIR: %s" % (cache_root)
         exit(1)
-    
+
     cache_dir = os.path.join(cache_root, recipe_data["identifier"])
     if not os.path.isdir(cache_dir):
         print "cannot find cache folder: %s" % (cache_dir)
         exit(1)
-        
+
     return cache_dir
-    
+
 
 def open_cache(recipe_data):
     cache_dir = get_cache_folder(recipe_data)
-    
+
     cmdexec(['open', cache_dir])
+
 
 def clear_cache(recipe_data):
     cache_dir = get_cache_folder(recipe_data)
-    
+
     shutil.rmtree(cache_dir)
-    
+
     print "Deleted cache folder: %s" % (cache_dir)
-    
+
 
 def clone_recipe(recipe_data):
     # figure out new identifier:
@@ -209,12 +224,13 @@ def clone_recipe(recipe_data):
     # save plist in cwd
     save_recipe(recipe_plist, recipe_data['name'])
 
+
 def child_recipe(recipe_data):
     # prompt for new name
     parent_name = recipe_data['name']
     parent_name_frags = parent_name.split('.')
     print "Parent Recipe Name: %s" % (parent_name)
-    
+
     new_action = raw_input_with_default("Child Recipe Action (download, pkg, install...)")
     if new_action != parent_name_frags[1]:
         new_name = parent_name_frags[0]
@@ -223,7 +239,6 @@ def child_recipe(recipe_data):
     new_name = raw_input_with_default("Child Recipe Name", new_name)
     # prompt for new id
     parent_id = recipe_data['identifier']
-    id_frags = parent_id.rsplit('.', 2)
     # strip off old id_prefix, add new id_prefix
     new_id = '.'.join([get_id_prefix(), new_action, new_name])
     print "Parent Identifier: " + parent_id
@@ -231,34 +246,33 @@ def child_recipe(recipe_data):
     # TODO: check if this id is already used
     recipe_root = {
         'Identifier': new_id,
-        'ParentRecipe':parent_id,
+        'ParentRecipe': parent_id,
         'Description': "DESCRIPTION HERE!",
         'Process': [],
-        'Input': [],
+        'Input': {},
         'MinimumVersion': get_autopkg_version()
         }
     new_filename = '.'.join([new_name, new_action])
     save_recipe(recipe_root, new_filename)
-    
 
-def test_pref (recipe_data):
+
+def test_pref(recipe_data):
     if len(args.extra_args) > 0:
-        keys=args.extra_args
-    
-    for x in keys:
-        print "%s: %s" %(x, get_pref(x))
+        keys = args.extra_args
 
+    for x in keys:
+        print "%s: %s" % (x, get_pref(x))
 
 
 if __name__ == "__main__":
-    actions = { 
-        'info':recipe_info, 
-        'which': recipe_which, 
-        'path': recipe_which, 
-        'identifier':recipe_id , 
-        'id':recipe_id, 
-        'open':recipe_open,
-        'reveal':recipe_reveal,
+    actions = {
+        'info': recipe_info,
+        'which': recipe_which,
+        'path': recipe_which,
+        'identifier': recipe_id,
+        'id': recipe_id,
+        'open': recipe_open,
+        'reveal': recipe_reveal,
         'show': recipe_reveal,
         'edit': recipe_edit,
         'status': recipe_status,
@@ -273,8 +287,8 @@ if __name__ == "__main__":
 
     # for convenience link to argparse tutorial:
     # https://docs.python.org/2/howto/argparse.html#id1
-    parser = argparse.ArgumentParser(description='A tool that helps manage and manipulate `autopkg` recipes.', 
-                    epilog="""actions can be one of the following:
+    parser = argparse.ArgumentParser(description='A tool that helps manage and manipulate `autopkg` recipes.',
+                                     epilog="""actions can be one of the following:
     info                synonym for `autopkg info`
     which or path       prints the path to the recipe_id
     identifier or id    prints the identifier for the recipe
@@ -287,7 +301,7 @@ if __name__ == "__main__":
     clearcache          deletes the cache folder for this recipe
     duplicate           prompts for a new identifier and creates a copy of the recipe in the CWD
     newchild            prompts for a new identifier and creates a new stub recipe with the given recipe as a parent
-    
+
     for 'status' and 'edit' additional options will be passed into the command
     e.g.: recipeutil status Firefox.download --short
     """, formatter_class=argparse.RawTextHelpFormatter)
@@ -309,11 +323,11 @@ if __name__ == "__main__":
     # finally, actually parse the arguments
     args = parser.parse_args()
     logger(args, 3)
-    #args.func(args)
+    # args.func(args)
 
     # get the recipe data
     recipe_data = get_recipe_data(args.recipe_name_or_id)
-    
+
     # if --parent is set, replace recipe_data with its parent
     if args.parent:
         if 'parent_path' in recipe_data:
@@ -321,16 +335,16 @@ if __name__ == "__main__":
         else:
             print "%s does not have a parent recipe!" % (args.recipe_name_or_id)
             exit(1)
-    
+
     recipe_list = [recipe_data]
-    
+
     # if --all-parents is set work through the list
-    
+
     if args.all_parents:
         while 'parent_path' in recipe_data:
             recipe_data = get_recipe_data(recipe_data['parent_path'])
             recipe_list.append(recipe_data)
-    
+
     # apply action to all items in recipe_data
     l = len(recipe_list)
     for r in recipe_list:
@@ -338,5 +352,3 @@ if __name__ == "__main__":
             print
             print r['name']
         actions[args.action](r)
-
-
