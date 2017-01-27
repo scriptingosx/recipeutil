@@ -179,7 +179,7 @@ def recipe_status(recipe_data):
 
 
 def get_cache_folder(recipe_data):
-    cache_root = get_pref("CACHE_DIR")
+    cache_root = get_pref("CACHE_DIR", default=os.path.expanduser("~/Library/AutoPkg/Cache"))
     # logger(cache_root, 3)
     if not os.path.isdir(cache_root):
         print "cannot find CACHE_DIR: %s" % (cache_root)
